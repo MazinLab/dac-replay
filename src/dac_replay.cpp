@@ -27,13 +27,12 @@ typedef struct iqstream_t {
 
 void dac_table(sample_t comb[MAX_SAMPLES][2], unsigned int length, bool tlast,
 			   unsigned int tlast_length, adcstream_t &iout, adcstream_t &qout, iqstream_t &iqout) {
-
-#pragma HLS INTERFACE axis off port=iout
+#pragma HLS INTERFACE axis register port=iout
 #pragma HLS INTERFACE axis register port=qout
 #pragma HLS INTERFACE axis register port=iqout
 #pragma HLS ARRAY_PARTITION variable=comb dim=2 complete
 #pragma HLS ARRAY_PARTITION variable=comb dim=1 block factor=8
-#pragma HLS INTERFACE s_axilite port=comb bundle=control
+#pragma HLS INTERFACE s_axilite port=comb bundle=control clock=control_clk
 #pragma HLS INTERFACE s_axilite port=length bundle=control
 #pragma HLS INTERFACE s_axilite port=tlast bundle=control
 #pragma HLS INTERFACE s_axilite port=tlast_length bundle=control
