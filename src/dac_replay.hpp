@@ -7,6 +7,7 @@
 #define N_LANES 8
 
 typedef unsigned short sample_t;
+typedef ap_uint<15> samplectr_t;
 
 typedef struct samplegroup_t {
 	sample_t v[N_LANES];
@@ -38,12 +39,10 @@ typedef struct iqstreamint_t {
 	bool last;
 } iqstreamint_t;
 
-const int BURST_LEN=64;
-const int MAX_SAMPLES=262144;///8;
+const int MAX_SAMPLES=262144;
 
-void dac_table_master(volatile sample_t* a, bool &config, unsigned int length, bool tlast,
-			   	   	  unsigned int replay_length, adcstream_t &iout, adcstream_t &qout, iqstream_t &iqout);
-void dac_table(sample_t comb[MAX_SAMPLES/8][8][2], unsigned int length, bool tlast,
-			   unsigned int tlast_length, adcstream_t &iout, adcstream_t &qout, iqstream_t &iqout);
-void dac_table_streams(sample_t comb[MAX_SAMPLES/8][8][2], unsigned int length, bool tlast,
-			   unsigned int tlast_length, hls::stream<adcstreamint_t> &iout, hls::stream<adcstreamint_t> &qout, hls::stream<iqstreamint_t> &iqout);
+
+void dac_table_axim(volatile sample_t* a, unsigned int length, bool tlast, unsigned int replay_length, bool &run,
+		hls::stream<adcstreamint_t> &iout, hls::stream<adcstreamint_t> &qout, hls::stream<iqstreamint_t> &iqout);
+void dac_table_axilite(sample_t comb[MAX_SAMPLES/8][8][2], unsigned int length, bool tlast, unsigned int replay_length, bool &run,
+		hls::stream<adcstreamint_t> &iout, hls::stream<adcstreamint_t> &qout, hls::stream<iqstreamint_t> &iqout);
