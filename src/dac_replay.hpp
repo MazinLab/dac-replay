@@ -7,6 +7,8 @@
 #define N_LANES 8
 
 typedef unsigned short sample_t;
+typedef unsigned int sample32_t;
+typedef ap_uint<28> sample28_t;
 typedef ap_uint<15> samplectr_t;
 
 typedef struct samplegroup_t {

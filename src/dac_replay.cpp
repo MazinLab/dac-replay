@@ -3,12 +3,12 @@
 #include <iostream>
 using namespace std;
 
-void dac_table_axim(volatile sample_t* a, samplectr_t length, bool tlast, samplectr_t replay_length, bool &run,
+void dac_table_axim(volatile sample32_t* a, samplectr_t length, bool tlast, samplectr_t replay_length, bool &run,
 		hls::stream<adcstreamint_t> &iout, hls::stream<adcstreamint_t> &qout, hls::stream<iqstreamint_t> &iqout) {
 #pragma HLS INTERFACE axis register port=iout
 #pragma HLS INTERFACE axis register port=qout
 #pragma HLS INTERFACE axis register port=iqout
-#pragma HLS INTERFACE m_axi port=a depth=2*2*MAX_SAMPLES max_read_burst_length=256 bundle=control offset=slave
+#pragma HLS INTERFACE m_axi port=a depth=2*MAX_SAMPLES max_read_burst_length=256 bundle=control offset=slave num_read_outstanding=0
 #pragma HLS INTERFACE s_axilite port=length bundle=control
 #pragma HLS INTERFACE s_axilite port=tlast bundle=control
 #pragma HLS INTERFACE s_axilite port=replay_length bundle=control
@@ -17,22 +17,23 @@ void dac_table_axim(volatile sample_t* a, samplectr_t length, bool tlast, sample
 
 
 	samplectr_t sample, last_counter, foo, bar;
-	sample_t comb[MAX_SAMPLES/N_LANES][N_LANES][2];
+	sample32_t comb[MAX_SAMPLES/N_LANES][N_LANES];
 #pragma HLS ARRAY_PARTITION variable=comb dim=2 complete
-#pragma HLS ARRAY_PARTITION variable=comb dim=3 complete
 
 	sample=0;
 	foo=replay_length-1;
 	bar=length-1;
+//	if (length > MAX_SAMPLES/N_LANES) bar=MAX_SAMPLES/N_LANES-1;
+//	else bar=length-1;
 	last_counter=foo;
 
-	memcpy(comb, (const sample_t*) a, MAX_SAMPLES*2*sizeof(sample_t));
+	memcpy(comb, (const sample32_t*) a, MAX_SAMPLES*sizeof(sample32_t));
 
 //	for (int i=0;i<length*2;i++) {
 	runloop: while(run) {
 #pragma HLS PIPELINE II=1
 		bool set_last;
-		sample_t ival[N_LANES], qval[N_LANES];
+		sample32_t iqval[N_LANES];
 		adcstreamint_t itmp, qtmp;
 		iqstreamint_t iqtmp;
 
@@ -45,18 +46,13 @@ void dac_table_axim(volatile sample_t* a, samplectr_t length, bool tlast, sample
 		}
 
 		load: for (int lane=0;lane<N_LANES;lane++) {
-			ival[lane]=comb[sample][lane][0];
-			qval[lane]=comb[sample][lane][1];
+			iqval[lane]=comb[sample][lane];
 		}
 
 		outtmp: for (int lane=0;lane<N_LANES;lane++) {
-			itmp.data.range((lane+1)*16-1, lane*16)=ival[lane];
-			qtmp.data.range((lane+1)*16-1, lane*16)=qval[lane];
-
-			ap_uint<32> x;
-			x.range(15,0)=ival[lane];
-			x.range(31,16)=qval[lane];
-			iqtmp.data.range((lane+1)*32-1, lane*32)=x;
+			itmp.data.range((lane+1)*16-1, lane*16)=iqval[lane]&0xffff;
+			qtmp.data.range((lane+1)*16-1, lane*16)=iqval[lane]>>16;
+			iqtmp.data.range((lane+1)*32-1, lane*32)=iqval[lane];
 		}
 		itmp.last=set_last;
 		qtmp.last=set_last;
@@ -66,11 +62,8 @@ void dac_table_axim(volatile sample_t* a, samplectr_t length, bool tlast, sample
 		qout.write(qtmp);
 		iqout.write(iqtmp);
 
-		if (sample==bar) {
-			sample=0;
-		} else {
-			sample++;
-		}
+		if (sample==bar) sample=0;
+		else sample++;
 	}
 
 }
