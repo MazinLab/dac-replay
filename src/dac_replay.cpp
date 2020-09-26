@@ -8,7 +8,7 @@ void dac_table_axim(volatile sample32_t* a, samplectr_t length, bool tlast, samp
 #pragma HLS INTERFACE axis register port=iout
 #pragma HLS INTERFACE axis register port=qout
 #pragma HLS INTERFACE axis register port=iqout
-#pragma HLS INTERFACE m_axi port=a depth=2*MAX_SAMPLES max_read_burst_length=256 num_read_outstanding=0 offset=slave bundle=control
+#pragma HLS INTERFACE m_axi port=a depth=2*MAX_SAMPLES max_read_burst_length=256 num_read_outstanding=1 offset=slave bundle=control
 #pragma HLS INTERFACE s_axilite port=length bundle=control
 #pragma HLS INTERFACE s_axilite port=tlast bundle=control
 #pragma HLS INTERFACE s_axilite port=replay_length bundle=control
