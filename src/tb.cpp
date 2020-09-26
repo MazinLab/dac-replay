@@ -110,11 +110,7 @@ int main(){
 	length=64;
 	run=true;
 
-
-//	dac_table_axilite(comb, length, tlast, tlast_length, run, iout, qout, iqout);
-	dac_table_axim((sample_t*) comb, length, tlast, tlast_length, run, iout, qout, iqout);
-
-
+	dac_table_axim((sample32_t*) comb, samplectr_t(length), tlast, samplectr_t(tlast_length), run, iout, qout, iqout);
 	fail=verify(2, comb, length, tlast, tlast_length, iout, qout, iqout);
 
 	if (fail) cout<<"FAIL\n";
