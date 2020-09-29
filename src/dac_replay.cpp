@@ -57,6 +57,7 @@ void dac_table_axim(volatile sample32_t* a, samplectr_t length, bool tlast, samp
 		}
 		itmp.last=set_last;
 		qtmp.last=set_last;
+		iqtmp.user=sample;
 		iqtmp.last=set_last;
 
 		iout.write(itmp);
