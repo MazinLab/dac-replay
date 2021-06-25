@@ -1,1 +1,6 @@
 dac-replay/
+dac-replay-2020
+._.DS_Store
+vitis_hls.log
+vivado_hls.log
+._dac_replay.cpp

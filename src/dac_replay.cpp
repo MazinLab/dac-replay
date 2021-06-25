@@ -24,13 +24,11 @@ void dac_table_axim(volatile sample32_t* a, samplectr_t length, bool tlast, samp
 	sample=0;
 	foo=replay_length-1;
 	bar=length-1;
-//	if (length > MAX_SAMPLES/N_LANES) bar=MAX_SAMPLES/N_LANES-1;
-//	else bar=length-1;
 	last_counter=foo;
 
 	memcpy(comb, (const sample32_t*) a, MAX_SAMPLES*sizeof(sample32_t));
 
-//	for (int i=0;i<length*2;i++) {
+//	runloop: for (int i=0;i<length*2;i++) {
 	runloop: while(run) {
 #pragma HLS PIPELINE II=1
 		bool set_last;
