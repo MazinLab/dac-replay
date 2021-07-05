@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "hls_stream.h"
-#include "axi.h"
+#include "ap_axi_sdata.h"
 
 #define N_LANES 16
 

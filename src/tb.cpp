@@ -5,8 +5,8 @@
 using namespace std;
 
 
-bool verify(int nfor, sample_t comb[MAX_SAMPLES/8][8][2], unsigned int  length, bool tlast, unsigned int tlast_length,
-		hls::stream<adcstreamint_t> &iout, hls::stream<adcstreamint_t> &qout, hls::stream<iqstreamint_t> &iqout){
+bool verify(int nfor, sample_t comb[MAX_SAMPLES/N_LANES][N_LANES][2], unsigned int  length, bool tlast, unsigned int tlast_length,
+		    hls::stream<adcstreamint_t> &iout, hls::stream<adcstreamint_t> &qout, hls::stream<iqstreamint_t> &iqout) {
 	bool fail=false;
 
 	if (iout.size()!=nfor*length) {
@@ -33,8 +33,8 @@ bool verify(int nfor, sample_t comb[MAX_SAMPLES/8][8][2], unsigned int  length, 
 
 		if (sample==length) sample=0;
 		//build expected output
-		ap_uint<128> iexp, qexp;
-		ap_uint<256> iqexp;
+		ap_uint<16*N_LANES> iexp, qexp;
+		ap_uint<32*N_LANES> iqexp;
 		bool lastexp;
 		for (int i=0;i<N_LANES; i++) {
 			iexp.range((i+1)*16-1,i*16)=comb[sample][i][0];
@@ -86,7 +86,7 @@ bool verify(int nfor, sample_t comb[MAX_SAMPLES/8][8][2], unsigned int  length, 
 			cout<<endl;
 		}
 		sample++;
-	}
+	} return fail;
 }
 
 sample_t comb[MAX_SAMPLES/N_LANES][N_LANES][2];
