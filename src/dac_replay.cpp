@@ -38,6 +38,7 @@ void dac_table_axim(ap_uint<128> *a, samplectr_t length, bool tlast, samplectr_t
 	//4 or 8 banks needed for depth so 32 or 64 chip has 80, but this wastes 11%
 	//doing a 2 cycle read of 1k needs 14.22 so 15 in a bank with 2 or 4 banks 30 or 60 wastes 5.2%
 
+	ap_uint<1024> iq_for2clocks;
 	samplectr_t sample, last_counter;
 	ap_uint<1024> comb2wide[MAX_SAMPLES/N_LANES/2];
 #pragma HLS BIND_STORAGE variable=comb2wide type=ram_2p impl=uram// latency=3
@@ -45,29 +46,30 @@ void dac_table_axim(ap_uint<128> *a, samplectr_t length, bool tlast, samplectr_t
 	sample=0;
 	last_counter=replay_length;
 
+	//Load the data over AXI
 	copy: for (int i=0; i<MAX_SAMPLES/4/8; i++) {
 #pragma HLS PIPELINE ii=20
 		ap_uint<1024> x;
 		ap_uint<128> x128[8];
 		for (int j=0; j<8;j++) {
 			x128[j]=*(a+i*8+j);//]*(a+i*8+j);
-//			cout<<"loaded: ";
-//			for (int k=0;k<8;k++) cout<<x128[j].range((k+1)*16-1,k*16).to_uint()<<", ";
-//			cout<<endl;
+			cout<<"loaded: ";
+			for (int k=0;k<8;k++) cout<<x128[j].range((k+1)*16-1,k*16).to_uint()<<", ";
+			cout<<endl;
 		}
 		for (int j=0; j<8;j++) x.range((128+1)*j-1, 128*j)=x128[j];
 		comb2wide[i]=x;
 	}
 
-	ap_uint<1024> iq_for2clocks;
-//	run: for (int i=0;i<length*2;i++) {
-	runloop: while(run) {
+	//Replay the data
+	run: for (int i=0;i<length*2;i++) {  //for simulating
+//	runloop: while(run) {
 #pragma HLS PIPELINE II=1
 		bool set_last;
-		sample32_t iqval[N_LANES];
 		adcstreamint_t itmp, qtmp;
 		iqstreamint_t iqtmp;
-		ap_uint<256> itmpdat,qtmpdat;
+		ap_uint<256> itmpdat, qtmpdat;
+		ap_uint<512> iqtmpdat;
 
 		if (last_counter==0) {
 			set_last=tlast;
@@ -82,26 +84,29 @@ void dac_table_axim(ap_uint<128> *a, samplectr_t length, bool tlast, samplectr_t
 
 			itmpdat=iq_for2clocks.range(255,0);
 			qtmpdat=iq_for2clocks.range(511,256);
-			iqtmp.data=i256q256_to_iq512(itmpdat,qtmpdat);
+			iqtmpdat=i256q256_to_iq512(itmpdat,qtmpdat);
 		} else {
 			itmpdat=iq_for2clocks.range(767,512);
 			qtmpdat=iq_for2clocks.range(1023,768);
-			iqtmp.data=i256q256_to_iq512(itmpdat,qtmpdat);
+			iqtmpdat=i256q256_to_iq512(itmpdat,qtmpdat);
 		}
 
+		// Write out the streams
 		itmp.data=itmpdat;
-		qtmp.data=qtmpdat;
 		itmp.last=set_last;
-		qtmp.last=set_last;
 		iout.write(itmp);
+
+		qtmp.data=qtmpdat;
+		qtmp.last=set_last;
 		qout.write(qtmp);
 
+		iqtmp.data=iqtmpdat;
 		iqtmp.user=sample;
 		iqtmp.last=set_last;
 		iqout.write(iqtmp);
 
-		if (sample==length) sample=0;
-		else sample++;
+		//Next sample
+		sample = sample==length ? samplectr_t(0): samplectr_t(sample+1);
 	}
 
 }
