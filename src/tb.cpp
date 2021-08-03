@@ -122,7 +122,7 @@ int main(){
 	run=true;
 
 	cout<<"Running core.\n";
-	dac_table_axim(combdata, length, tlast, tlast_length, run, iout, qout, iqout);
+	dac_table_axim(combdata, length-1, tlast, tlast_length-1, run, iout, qout, iqout);
 	fail=verify(2, comb, length, tlast, tlast_length, iout, qout, iqout);
 
 	if (fail) cout<<"FAIL\n";
