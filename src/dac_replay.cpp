@@ -23,7 +23,7 @@ void dac_table_axim(ap_uint<128> *a, samplectr_t length, bool tlast, samplectr_t
 #pragma HLS INTERFACE axis register port=iout
 #pragma HLS INTERFACE axis register port=qout
 #pragma HLS INTERFACE axis register port=iqout
-#pragma HLS INTERFACE m_axi port=a depth=MAX_SAMPLES/4 offset=slave max_write_burst_length=1 num_write_outstanding=1 num_read_outstanding=1 max_read_burst_length=1
+#pragma HLS INTERFACE m_axi port=a depth=MAX_SAMPLES/4 offset=slave max_write_burst_length=1 num_write_outstanding=1 num_read_outstanding=1 max_read_burst_length=8
 #pragma HLS INTERFACE s_axilite port=a bundle=control
 #pragma HLS INTERFACE s_axilite port=length bundle=control
 #pragma HLS INTERFACE s_axilite port=tlast bundle=control
@@ -51,19 +51,14 @@ void dac_table_axim(ap_uint<128> *a, samplectr_t length, bool tlast, samplectr_t
 #pragma HLS PIPELINE ii=20
 		ap_uint<1024> x;
 		ap_uint<128> x128[8];
-		for (int j=0; j<8;j++) {
-			x128[j]=*(a+i*8+j);//]*(a+i*8+j);
-			cout<<"loaded: ";
-			for (int k=0;k<8;k++) cout<<x128[j].range((k+1)*16-1,k*16).to_uint()<<", ";
-			cout<<endl;
-		}
-		for (int j=0; j<8;j++) x.range((128+1)*j-1, 128*j)=x128[j];
+		for (int j=0; j<8;j++) x128[j]=*(a+i*8+j);
+		for (int j=0; j<8;j++) x.range(128*(j+1)-1, 128*j)=x128[j];
 		comb2wide[i]=x;
 	}
 
 	//Replay the data
-	run: for (int i=0;i<length*2;i++) {  //for simulating
-//	runloop: while(run) {
+//	run: for (int i=0;i<(length+1)*2;i++) {  //for simulating
+	runloop: while(run) {
 #pragma HLS PIPELINE II=1
 		bool set_last;
 		adcstreamint_t itmp, qtmp;

@@ -4,20 +4,35 @@
 
 using namespace std;
 
+ap_uint<512> i256q256_to_iq512_tb(ap_uint<256> i, ap_uint<256> q){
+	ap_uint<512> iq;
+	for (int lane=0;lane<16;lane++) {
+		ap_uint<32> tmp;
+		tmp.range(15,0)=i.range(16*(lane+1)-1, 16*lane);
+		tmp.range(31,16)=q.range(16*(lane+1)-1, 16*lane);
+		iq.range(32*(lane+1)-1, lane*32)=tmp;
+	}
+	return iq;
+}
 
-bool verify(int nfor, sample_t comb[MAX_SAMPLES/N_LANES][N_LANES][2], unsigned int  length, bool tlast, unsigned int tlast_length,
+void print16_from256(ap_uint<256> x) {
+	for (int i=0;i<16;i++) cout<<x.range((i+1)*16-1,i*16).to_uint()<<", ";
+}
+
+
+bool verify(int nfor_loops, ap_uint<128> combdata[MAX_SAMPLES/4], unsigned int  length, bool tlast, unsigned int tlast_length,
 		    hls::stream<adcstreamint_t> &iout, hls::stream<adcstreamint_t> &qout, hls::stream<iqstreamint_t> &iqout) {
 	bool fail=false;
 
-	if (iout.size()!=nfor*length) {
+	if (iout.size()!=nfor_loops*length) {
 		fail=true;
 		cout<<"iout wrong size:"<<iout.size()<<endl;
 	}
-	if (qout.size()!=nfor*length) {
+	if (qout.size()!=nfor_loops*length) {
 		fail=true;
 		cout<<"qout wrong size:"<<qout.size()<<endl;
 	}
-	if (iqout.size()!=nfor*length) {
+	if (iqout.size()!=nfor_loops*length) {
 		fail=true;
 		cout<<"iqout wrong size:"<<iqout.size()<<endl;
 	}
@@ -31,21 +46,29 @@ bool verify(int nfor, sample_t comb[MAX_SAMPLES/N_LANES][N_LANES][2], unsigned i
 		iqout.read(iqval);
 
 
-		if (sample==length) sample=0;
+		if (sample==length)
+			sample=0;
 		//build expected output
 		ap_uint<16*N_LANES> iexp, qexp;
 		ap_uint<32*N_LANES> iqexp;
 		bool lastexp;
-		for (int i=0;i<N_LANES; i++) {
-			iexp.range((i+1)*16-1,i*16)=comb[sample][i][0];
-			qexp.range((i+1)*16-1,i*16)=comb[sample][i][1];
-			ap_uint<32> x;
-			x.range(15,0)=comb[sample][i][0];
-			x.range(31,16)=comb[sample][i][1];
-			iqexp.range((i+1)*32-1,i*32)=x;
-			cout<<" Exp:"<<comb[sample][i][0]<<", "<<comb[sample][i][1];
-			cout<<" Got:"<<ival.data.range((i+1)*16-1,i*16).to_uint()<<", "<<qval.data.range((i+1)*16-1,i*16).to_uint()<<endl;
-		}
+
+
+		ap_uint<128> x[4];
+		for (int i=0;i<4; i++) x[i]=combdata[sample*4+i];
+		iexp.range(127,0)=x[0];
+		iexp.range(255,128)=x[1];
+		qexp.range(127,0)=x[2];
+		qexp.range(255,128)=x[3];
+		iqexp=i256q256_to_iq512_tb(iexp,qexp);
+
+//		cout<<" exp i: ";print16_from256(iexp);cout<<endl;
+//		cout<<" got i: ";print16_from256(ival.data);cout<<endl;
+//		cout<<" exp q: ";print16_from256(qexp);cout<<endl;
+//		cout<<" got q: ";print16_from256(qval.data);cout<<endl;
+//		cout<<" exp sample: "<<sample<<" ilast: "<<(((sample+1)%tlast_length)== 0)<<endl;
+//		cout<<" got iquser: "<<iqval.user<<" ilast: "<<ival.last<<endl;
+
 		lastexp=((sample+1)%tlast_length == 0) && tlast;
 
 		//compare output
@@ -91,7 +114,7 @@ bool verify(int nfor, sample_t comb[MAX_SAMPLES/N_LANES][N_LANES][2], unsigned i
 	} return fail;
 }
 
-sample_t comb[MAX_SAMPLES/N_LANES][N_LANES][2];
+//sample_t comb[MAX_SAMPLES/N_LANES][N_LANES][2];
 ap_uint<128> combdata[MAX_SAMPLES/4];
 
 
@@ -100,14 +123,8 @@ int main(){
 	volatile ap_uint<128>* a;
 	sample_t* iq_flat;
 
-	iq_flat = (sample_t*) comb;
-
-	for (int i=0;i<2*MAX_SAMPLES; i++) iq_flat[i]=i;
-
 	for (int i=0; i<MAX_SAMPLES/4; i++) { // 2=iq 4=4 iq in 128bits1
-		ap_uint<128> x; //4 iq samp
-		for (int j=0; j<8;j++) x.range(16*(j+1)-1, 16*j)=iq_flat[i*8+j];//i*8+j;
-		combdata[i]=x;
+		combdata[i]=i;
 	}
 
 	samplectr_t length, tlast_length;
@@ -123,7 +140,7 @@ int main(){
 
 	cout<<"Running core.\n";
 	dac_table_axim(combdata, length-1, tlast, tlast_length-1, run, iout, qout, iqout);
-	fail=verify(2, comb, length, tlast, tlast_length, iout, qout, iqout);
+	fail=verify(2, combdata, length, tlast, tlast_length, iout, qout, iqout);
 
 	if (fail) cout<<"FAIL\n";
 	else cout<<"PASSED!\n";

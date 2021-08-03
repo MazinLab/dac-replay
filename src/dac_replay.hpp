@@ -18,7 +18,7 @@ typedef ap_axiu<256,0,0,0> adcstreamint_t;
 typedef ap_axiu<512,8,0,0> iqstreamint_t;
 
 
-const int MAX_SAMPLES=262144/2;
+const int MAX_SAMPLES=262144*2;
 
 void dac_table_axim(ap_uint<128> *a, samplectr_t length, bool tlast, samplectr_t replay_length, bool &run,
 		hls::stream<adcstreamint_t> &iout, hls::stream<adcstreamint_t> &qout, hls::stream<iqstreamint_t> &iqout);
