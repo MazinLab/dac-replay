@@ -14,8 +14,10 @@ ap_uint<512> i256q256_to_iq512(ap_uint<256> i, ap_uint<256> q){
 	return iq;
 }
 
-void dac_table_axim(ap_uint<128> *a, samplectr_t length, bool tlast, samplectr_t replay_length, bool &run,
+void dac_table_axim(ap_uint<128> *a, samplectr_t length, bool tlast, samplectr_t replay_length, volatile bool &run,
 		hls::stream<adcstreamint_t> &iout, hls::stream<adcstreamint_t> &qout, hls::stream<iqstreamint_t> &iqout) {
+//Data in 8 must be of form I0...I15 Q0...Q15 I16...I33 Q16...
+//length and replay_length must be odd and set to N-1 i.e. always replaying m*32 samples m>0
 #pragma HLS STABLE variable=tlast
 #pragma HLS STABLE variable=a
 #pragma HLS STABLE variable=length
@@ -29,6 +31,9 @@ void dac_table_axim(ap_uint<128> *a, samplectr_t length, bool tlast, samplectr_t
 #pragma HLS INTERFACE s_axilite port=tlast bundle=control
 #pragma HLS INTERFACE s_axilite port=replay_length bundle=control
 #pragma HLS INTERFACE s_axilite port=run bundle=control
+#pragma HLS STABLE variable=length
+#pragma HLS STABLE variable=tlast
+#pragma HLS STABLE variable=replay_length
 //NB that RTL cosim will fail if the return and axim ports are bundled with the other args
 #pragma HLS INTERFACE s_axilite port=return bundle=control
 
@@ -38,17 +43,21 @@ void dac_table_axim(ap_uint<128> *a, samplectr_t length, bool tlast, samplectr_t
 	//4 or 8 banks needed for depth so 32 or 64 chip has 80, but this wastes 11%
 	//doing a 2 cycle read of 1k needs 14.22 so 15 in a bank with 2 or 4 banks 30 or 60 wastes 5.2%
 
+	bool _run, _runcache;
+	_run=true;
+	_runcache=true;
+
 	ap_uint<1024> iq_for2clocks;
 	samplectr_t sample, last_counter;
 	ap_uint<1024> comb2wide[MAX_SAMPLES/N_LANES/2];
-#pragma HLS BIND_STORAGE variable=comb2wide type=ram_2p impl=uram// latency=3
+#pragma HLS BIND_STORAGE variable=comb2wide type=ram_2p impl=uram
 
 	sample=0;
 	last_counter=replay_length;
 
 	//Load the data over AXI
 	copy: for (int i=0; i<MAX_SAMPLES/4/8; i++) {
-#pragma HLS PIPELINE ii=20
+#pragma HLS PIPELINE ii=17
 		ap_uint<1024> x;
 		ap_uint<128> x128[8];
 		for (int j=0; j<8;j++) x128[j]=*(a+i*8+j);
@@ -58,7 +67,7 @@ void dac_table_axim(ap_uint<128> *a, samplectr_t length, bool tlast, samplectr_t
 
 	//Replay the data
 //	run: for (int i=0;i<(length+1)*2;i++) {  //for simulating
-	runloop: while(run) {
+	runloop: while(_run) {
 #pragma HLS PIPELINE II=1
 		bool set_last;
 		adcstreamint_t itmp, qtmp;
@@ -80,10 +89,12 @@ void dac_table_axim(ap_uint<128> *a, samplectr_t length, bool tlast, samplectr_t
 			itmpdat=iq_for2clocks.range(255,0);
 			qtmpdat=iq_for2clocks.range(511,256);
 			iqtmpdat=i256q256_to_iq512(itmpdat,qtmpdat);
+			_runcache=run;
 		} else {
 			itmpdat=iq_for2clocks.range(767,512);
 			qtmpdat=iq_for2clocks.range(1023,768);
 			iqtmpdat=i256q256_to_iq512(itmpdat,qtmpdat);
+			_run=_runcache;
 		}
 
 		// Write out the streams

@@ -114,7 +114,6 @@ bool verify(int nfor_loops, ap_uint<128> combdata[MAX_SAMPLES/4], unsigned int  
 	} return fail;
 }
 
-//sample_t comb[MAX_SAMPLES/N_LANES][N_LANES][2];
 ap_uint<128> combdata[MAX_SAMPLES/4];
 
 
