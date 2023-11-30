@@ -22,14 +22,13 @@ typedef ap_uint<256> sample16x_t; //i or q
 typedef ap_axiu<128,0,0,0> adcstreamint_t;
 typedef ap_axiu<256,8,0,0> iqstreamint_t;
 
-//iq4x_t a[MAX_IQ_SAMPLES/4]
-void dac_table_axim(sample8x_t *a, bool run, hls::stream<adcstreamint_t> &iout, hls::stream<adcstreamint_t> &qout, hls::stream<iqstreamint_t> &iqout);
+void dac_table_8x(sample8x_t a[MAX_IQ_SAMPLES/4], bool run, hls::stream<adcstreamint_t> &iout, hls::stream<adcstreamint_t> &qout, hls::stream<iqstreamint_t> &iqout);
 
 #include <iostream>
 
 using namespace std;
 
-inline iq8x_t i_and_q_to_iq_tb(sample8x_t i, sample8x_t q){
+inline iq8x_t i_and_q_to_iq(sample8x_t i, sample8x_t q){
 	iq8x_t iq;
 	for (int lane=0;lane<8;lane++) {
 		iq_t tmp;
@@ -40,7 +39,7 @@ inline iq8x_t i_and_q_to_iq_tb(sample8x_t i, sample8x_t q){
 	return iq;
 }
 
-inline iq16x_t i_and_q_to_iq_tb(sample16x_t i, sample16x_t q){
+inline iq16x_t i_and_q_to_iq(sample16x_t i, sample16x_t q){
 	iq16x_t iq;
 	for (int lane=0;lane<16;lane++) {
 		iq_t tmp;

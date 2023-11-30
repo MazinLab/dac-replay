@@ -1,32 +1,8 @@
 #include "dac_replay.hpp"
 
-#include <iostream>
-using namespace std;
-
-iq8x_t i_and_q_to_iq(sample8x_t i, sample8x_t q){
-	iq8x_t iq;
-	for (int lane=0;lane<8;lane++) {
-		iq_t tmp;
-		tmp.range(15,0)=i.range(16*(lane+1)-1, 16*lane);
-		tmp.range(31,16)=q.range(16*(lane+1)-1, 16*lane);
-		iq.range(32*(lane+1)-1, lane*32)=tmp;
-	}
-	return iq;
-}
-
-iq16x_t i_and_q_to_iq(sample16x_t i, sample16x_t q){
-	iq16x_t iq;
-	for (int lane=0;lane<16;lane++) {
-		iq_t tmp;
-		tmp.range(15,0)=i.range(16*(lane+1)-1, 16*lane);
-		tmp.range(31,16)=q.range(16*(lane+1)-1, 16*lane);
-		iq.range(32*(lane+1)-1, lane*32)=tmp;
-	}
-	return iq;
-}
 
 const int _N_LANES=N_LANES;
-void dac_table_axim(sample8x_t *a, bool run,
+void dac_table_8x(sample8x_t a[MAX_IQ_SAMPLES/4], bool run,
 					hls::stream<adcstreamint_t> &iout, hls::stream<adcstreamint_t> &qout, hls::stream<iqstreamint_t> &iqout) {
 //Data in a must be of form I0...I(N_LANE-1) Q0...Q(N_LANE-1)  I(N_LANE) ...I(2*N_LANE-1)  Q(N_LANE) ...
 #pragma HLS STABLE variable=a
@@ -63,10 +39,12 @@ void dac_table_axim(sample8x_t *a, bool run,
 		// a[i] 4*(I or Q)
 		sample8x_t iorq_dat[N_LANES*2*2/8];
 		for (int j=0; j<N_LANES*2*2/8;j++) //n_lanes*2 beats*2(i & q) / 8 vals per read
-			iorq_dat[j]=*(a+i*N_LANES/4*2+j); // bursted read of groups of 8 i or q samples
+			iorq_dat[j]=a[i*N_LANES/4*2+j]; // bursted read of groups of 8 i or q samples
 
 		for (int j=0; j<N_LANES*2*2/8;j++)
 			iq_bundle.range(8*16*(j+1)-1, 8*16*j)=iorq_dat[j]; //bundle for storage into uram
+
+		comb2wide[i]=iq_bundle;
 
 //#ifndef __SYNTHESIS__
 //		cout<<"Loaded i="<<i<<endl<<" ";
@@ -74,12 +52,15 @@ void dac_table_axim(sample8x_t *a, bool run,
 //		cout<<endl;
 //		if (i==MAX_IQ_SAMPLES/N_LANES/2-1) cout<<"Loaded last element from "<<(MAX_IQ_SAMPLES/N_LANES/2-1)*N_LANES/4*2+N_LANES*2*2/8-1<<endl;
 //#endif
-		comb2wide[i]=iq_bundle;
+
 	}
 
 	//Replay the data
-//	run: for (int i=0;i<MAX_IQ_SAMPLES/N_LANES * 2;i++) {  //for simulating, loop through twice
+#ifndef __SYNTHESIS__
+	run: for (int i=0;i<MAX_IQ_SAMPLES/N_LANES * 2;i++) {  //for simulating, loop through twice
+#else
 	runloop: while(_run) {
+#endif
 	#pragma HLS PIPELINE II=1
 		adcstreamint_t itmp, qtmp;
 		iqstreamint_t iqtmp;

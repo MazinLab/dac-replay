@@ -54,7 +54,7 @@ bool verify(int nfor_loops, sample8x_t combdata[MAX_IQ_SAMPLES/4],
 			}
 
 		}
-		iqexp=i_and_q_to_iq_tb(iexp,qexp);
+		iqexp=i_and_q_to_iq(iexp,qexp);
 
 		lastexp=(sample_group%256)==255;
 
@@ -127,7 +127,7 @@ int main(){
 	hls::stream<iqstreamint_t> iqout;
 
 	cout<<"Running core.\n";
-	dac_table_axim(combdata, true, iout, qout, iqout);
+	dac_table_8x(combdata, true, iout, qout, iqout);
 	fail=verify(2, combdata, iout, qout, iqout);
 
 	if (fail) cout<<"FAIL\n";
