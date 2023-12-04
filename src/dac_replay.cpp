@@ -2,15 +2,16 @@
 
 
 const int _N_LANES=N_LANES;
-void dac_table_8x(sample8x_t a[MAX_IQ_SAMPLES/4], bool run,
+void dac_table_8x(sample16x_t table[MAX_IQ_SAMPLES/8], bool run,
 					hls::stream<adcstreamint_t> &iout, hls::stream<adcstreamint_t> &qout, hls::stream<iqstreamint_t> &iqout) {
+#pragma HLS INTERFACE mode=ap_memory depth=MAX_IQ_SAMPLES/8 latency=12 port=table
 //Data in a must be of form I0...I(N_LANE-1) Q0...Q(N_LANE-1)  I(N_LANE) ...I(2*N_LANE-1)  Q(N_LANE) ...
-#pragma HLS STABLE variable=a
+//#pragma HLS STABLE variable=a
 #pragma HLS INTERFACE axis register port=iout depth=MAX_IQ_SAMPLES/_N_LANES*2
 #pragma HLS INTERFACE axis register port=qout depth=MAX_IQ_SAMPLES/_N_LANES*2
 #pragma HLS INTERFACE axis register port=iqout depth=MAX_IQ_SAMPLES/_N_LANES*2
-#pragma HLS INTERFACE m_axi port=a depth=MAX_IQ_SAMPLES/4 offset=slave max_write_burst_length=1 num_write_outstanding=1 num_read_outstanding=1 max_read_burst_length=8
-#pragma HLS INTERFACE s_axilite port=a bundle=control
+//#pragma HLS INTERFACE m_axi port=table depth=MAX_IQ_SAMPLES/4 offset=slave max_write_burst_length=1 num_write_outstanding=1 num_read_outstanding=1 max_read_burst_length=8
+//#pragma HLS INTERFACE s_axilite port=a bundle=control
 #pragma HLS INTERFACE s_axilite port=run bundle=control
 //NB that RTL cosim will fail if the return and axim ports are bundled with the other args
 #pragma HLS INTERFACE s_axilite port=return bundle=control
@@ -27,33 +28,10 @@ void dac_table_8x(sample8x_t a[MAX_IQ_SAMPLES/4], bool run,
 
 	iq16x_t iq_for2clocks;
 	samplectr_t sample_group;
-	iq16x_t comb2wide[MAX_IQ_SAMPLES/N_LANES/2]; //each is two beats worth of n N_LANES IQ samples stored N_LANES*I N_LANES*q N_LANES*I N_LANES*q
-#pragma HLS BIND_STORAGE variable=comb2wide type=ram_2p impl=uram latency=3
 
 	sample_group=0;
 
-	//Load the data over AXI
-	copy: for (int i=0; i<MAX_IQ_SAMPLES/N_LANES/2; i++) { //need to load MAX_IQ_SAMPLES, each time through gets 2*N_LANES IQs
-	#pragma HLS PIPELINE ii=6
-		iq16x_t iq_bundle; // N_LANES*I N_LANES*q N_LANES*I N_LANES*q
-		// a[i] 4*(I or Q)
-		sample8x_t iorq_dat[N_LANES*2*2/8];
-		for (int j=0; j<N_LANES*2*2/8;j++) //n_lanes*2 beats*2(i & q) / 8 vals per read
-			iorq_dat[j]=a[i*N_LANES/4*2+j]; // bursted read of groups of 8 i or q samples
 
-		for (int j=0; j<N_LANES*2*2/8;j++)
-			iq_bundle.range(8*16*(j+1)-1, 8*16*j)=iorq_dat[j]; //bundle for storage into uram
-
-		comb2wide[i]=iq_bundle;
-
-//#ifndef __SYNTHESIS__
-//		cout<<"Loaded i="<<i<<endl<<" ";
-//		printu16_fromN(iq_bundle);
-//		cout<<endl;
-//		if (i==MAX_IQ_SAMPLES/N_LANES/2-1) cout<<"Loaded last element from "<<(MAX_IQ_SAMPLES/N_LANES/2-1)*N_LANES/4*2+N_LANES*2*2/8-1<<endl;
-//#endif
-
-	}
 
 	//Replay the data
 #ifndef __SYNTHESIS__
@@ -70,11 +48,10 @@ void dac_table_8x(sample8x_t a[MAX_IQ_SAMPLES/4], bool run,
 
 		set_tlast=sample_group.range(7,0)==255;
 
-		if (!sample_group[0]) {
-			iq_for2clocks=comb2wide[sample_group/2];
-			itmpdat=iq_for2clocks.range(N_LANES*16-1,0);
-			qtmpdat=iq_for2clocks.range(2*N_LANES*16-1, N_LANES*16);
-			iqtmpdat=i_and_q_to_iq(itmpdat,qtmpdat);
+		sample16x_t iq_forclock=table[sample_group];
+		itmpdat=iq_forclock.range(N_LANES*16-1,0);
+		qtmpdat=iq_forclock.range(2*N_LANES*16-1, N_LANES*16);
+		iqtmpdat=i_and_q_to_iq(itmpdat,qtmpdat);
 
 //#ifndef __SYNTHESIS__
 //		if (sample_group%256 == 0){
@@ -84,21 +61,6 @@ void dac_table_8x(sample8x_t a[MAX_IQ_SAMPLES/4], bool run,
 //		printu16_fromN(qtmpdat);
 //		cout<<endl;}
 //#endif
-			_runcache=run;
-		} else {
-			itmpdat=iq_for2clocks.range(3*N_LANES*16-1,2*N_LANES*16);
-			qtmpdat=iq_for2clocks.range(4*N_LANES*16-1,3*N_LANES*16);
-			iqtmpdat=i_and_q_to_iq(itmpdat,qtmpdat);
-			_run=_runcache;
-//#ifndef __SYNTHESIS__
-//			if (sample_group%256 == 1){
-//		cout<<"Cached  sampgroup="<<sample_group<<" for replay on i="<<i<<" and next"<<endl<<" I:";
-//		printu16_fromN(itmpdat);
-//		cout<<endl<<" Q: ";
-//		printu16_fromN(qtmpdat);
-//		cout<<endl;}
-//#endif
-		}
 
 		// Write out the streams
 		itmp.data=itmpdat;

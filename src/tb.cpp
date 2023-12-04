@@ -114,10 +114,19 @@ bool verify(int nfor_loops, sample8x_t combdata[MAX_IQ_SAMPLES/4],
 
 
 int main(){
-	auto combdata = new sample8x_t [MAX_IQ_SAMPLES/4];
+	auto combdata = new sample8x_t [MAX_IQ_SAMPLES/4]; //  8 16b samples equiv. to 4 32b IQs
+	auto combdata2 = new sample16x_t [MAX_IQ_SAMPLES/8];
 
-	for (int i=0; i<MAX_IQ_SAMPLES/4; i++) { // 2=iq 4=4 iq in 128bits1
-		combdata[i]=i; ///sets IorQ0-7=0 IorQ8-15=1 ...
+	for (int i=0; i<MAX_IQ_SAMPLES/8; i++) { // 2=iq 4=4 iq in 128bits1
+		sample8x_t a,b;
+		a=2*i;
+		b=2*i+1;
+		sample16x_t c;
+		c.range(8*16-1,0)=a;
+		c.range(16*16-1,8*16)=b;
+		combdata[i*2]=a;
+		combdata[i*2+1]=b;
+		combdata2[i]=c; ///sets IorQ0-7=0 IorQ8-15=1 ...
 	}
 	cout<<"Last comb data value at "<<MAX_IQ_SAMPLES/4-1<<endl<<" ";
 	printu16_fromN(combdata[MAX_IQ_SAMPLES/4-1]);cout<<endl;
@@ -127,7 +136,7 @@ int main(){
 	hls::stream<iqstreamint_t> iqout;
 
 	cout<<"Running core.\n";
-	dac_table_8x(combdata, true, iout, qout, iqout);
+	dac_table_8x(combdata2, true, iout, qout, iqout);
 	fail=verify(2, combdata, iout, qout, iqout);
 
 	if (fail) cout<<"FAIL\n";

@@ -6,7 +6,7 @@
 #include "ap_axi_sdata.h"
 
 #define N_LANES 8
-const int MAX_IQ_SAMPLES=262144*2; //IQ samples, 2MiB, must drop to 1MiB to simulate w/o segfault
+const int MAX_IQ_SAMPLES=262144*2; //IQ samples, 2MiB, must drop to 1MiB to simulate w/o segfault on windows
 
 typedef unsigned short sample_t;
 typedef ap_uint<16> samplectr_t; //must be log2(MAX_IQ_SAMPLES/N_LANES/2)
@@ -22,7 +22,7 @@ typedef ap_uint<256> sample16x_t; //i or q
 typedef ap_axiu<128,0,0,0> adcstreamint_t;
 typedef ap_axiu<256,8,0,0> iqstreamint_t;
 
-void dac_table_8x(sample8x_t a[MAX_IQ_SAMPLES/4], bool run, hls::stream<adcstreamint_t> &iout, hls::stream<adcstreamint_t> &qout, hls::stream<iqstreamint_t> &iqout);
+void dac_table_8x(sample16x_t a[MAX_IQ_SAMPLES/8], bool run, hls::stream<adcstreamint_t> &iout, hls::stream<adcstreamint_t> &qout, hls::stream<iqstreamint_t> &iqout);
 
 #include <iostream>
 
