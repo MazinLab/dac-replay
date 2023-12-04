@@ -28,7 +28,7 @@ void dac_table_8x(sample8x_t a[MAX_IQ_SAMPLES/4], bool run,
 	iq16x_t iq_for2clocks;
 	samplectr_t sample_group;
 	iq16x_t comb2wide[MAX_IQ_SAMPLES/N_LANES/2]; //each is two beats worth of n N_LANES IQ samples stored N_LANES*I N_LANES*q N_LANES*I N_LANES*q
-#pragma HLS BIND_STORAGE variable=comb2wide type=ram_2p impl=uram
+#pragma HLS BIND_STORAGE variable=comb2wide type=ram_2p impl=uram latency=3
 
 	sample_group=0;
 
