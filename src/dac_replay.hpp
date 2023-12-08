@@ -22,7 +22,7 @@ typedef ap_uint<256> sample16x_t; //i or q
 typedef ap_axiu<128,0,0,0> adcstreamint_t;
 typedef ap_axiu<256,8,0,0> iqstreamint_t;
 
-void dac_table_8x(sample16x_t a[MAX_IQ_SAMPLES/8], bool run, hls::stream<adcstreamint_t> &iout, hls::stream<adcstreamint_t> &qout, hls::stream<iqstreamint_t> &iqout);
+void dac_table_8x(volatile sample16x_t a[MAX_IQ_SAMPLES/8], volatile bool &run, hls::stream<adcstreamint_t> &iout, hls::stream<adcstreamint_t> &qout, hls::stream<iqstreamint_t> &iqout);
 
 #include <iostream>
 
